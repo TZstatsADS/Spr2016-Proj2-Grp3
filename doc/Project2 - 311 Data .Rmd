@@ -1,0 +1,31 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+```{r}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/project2-group3/data")
+
+df = read.csv("311_Short Dataset.csv")
+#Filter for noises
+#Noise_filter = grepl("Noise",df$Complaint.Type)
+#df.noise = df[Noise_filter,]
+
+```
+
+
+```{r}
+library(wordcloud)
+library(dplyr)
+grop_by.descriptor <- group_by(df,Descriptor )
+word_count <- summarise(grop_by.descriptor,count = n())
+
+set.seed(1)
+words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count$count,word =  words, min.freq = 20)
+
+
+```
