@@ -1,0 +1,17 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+```{r}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/project2-group3/data")
+
+df = read.csv("311_Short Dataset.csv")
+#Filter for noises
+Noise_filter = grepl("Noise",df$Complaint.Type)
+df.noise = df[Noise_filter,]
+
+```
