@@ -1,0 +1,101 @@
+library(dplyr)
+library(data.table)
+library(plotrix)
+library(ggplot2)
+library(RColorBrewer)
+library(gridExtra)
+library(plyr)
+cols <- c("Incident Zip", "Complaint Type", "Descriptor", "Created Date", "Resolution Action Updated Date")
+pusa <- fread("C:/Users/mangmangyuzhou/Desktop/2016 Spring/data science/311_Service_Requests_from_2010_to_Present (1).csv", select = cols)
+summary(pusa)
+
+names(pus)
+names(pusa)
+
+pus <- filter(pusa, pusa$"Incident Zip" > 0)
+zip11694 <- filter(pus, pus$"Incident Zip" == 11694)
+zip10025 <- filter(pus, pus$"Incident Zip" == 10025)
+length(unique(pus$"Incident Zip"))
+summary(pus$`Incident Zip`)
+summary(zip11694)
+summary(zip10025)
+
+##check how many type of complaint
+length(zip11694$`Complaint Type`)
+length(zip10025$`Complaint Type`)
+length(unique(zip11694$`Complaint Type`))
+length(unique(zip10025$`Complaint Type`))
+
+table(zip11694$`Complaint Type`)
+table(zip10025$`Complaint Type`)
+
+dfzip11694 = as.data.frame(ftable(zip11694$`Complaint Type`))
+dfzip10025 = as.data.frame(ftable(zip10025$`Complaint Type`))
+
+##slect top 10(good one)
+topdfzip11694=head(arrange(dfzip11694,desc(Freq)), n = 10)
+topdfzip10025=head(arrange(dfzip10025,desc(Freq)), n = 10)
+
+#####no good code, just a remind to check why
+topdfzip11694=top_n(dfzip11694, 10, n)
+topdfzip10025=top_n(dfzip10025, 10, n)
+#########################
+
+plot11694<-ggplot(data=topdfzip11694, aes(x=Var1, y=Freq, fill=Var1)) +
+  geom_bar(colour="black", stat="identity") +
+  xlab("Complaint Type") + 
+  ylab("Count") + 
+  ggtitle("Complaint Type Count in zipcode 11694");plot11694
+
+plot10025<-ggplot(data=topdfzip10025, aes(x=Var1, y=Freq, fill=Var1)) +
+  geom_bar(colour="black", stat="identity") +
+  xlab("Complaint Type") + 
+  ylab("Count") + 
+  ggtitle("Complaint Type Count in zipcode 10025"); plot10025
+
+
+
+###time difference. 
+d1_10025=zip10025$"Created Date"
+d2_10025=zip10025$`Resolution Action Updated Date`
+d_10025 <- cbind.data.frame(d1_10025,d2_10025)
+names(d_10025)
+summary(d_10025)
+head(d_10025)
+summary(d1_10025)
+
+
+dif10025_raw=as.numeric(difftime(strptime(d1_10025, "%m/%d/%Y %H:%M"),strptime(d2_10025, "%m/%d/%Y %H:%M"),units='hours')); dif10025_raw
+##useless, but reminder
+dif10025_raw[is.na(dif10025)] <- 1.1
+##let dif be a positive number to remove them (not a good idea)
+
+##exclude the NA(good one)
+dif10025_raw2=na.exclude(dif10025_raw)
+##pick all the negtaive value and take the abs
+dif10025=abs(dif10025_raw2[which(dif10025_raw2 < 0)])
+
+median(dif10025)
+##end of 10025
+
+
+#pure code for 11694
+d1_11694=zip11694$"Created Date"
+d2_11694=zip11694$`Resolution Action Updated Date`
+d_11694 <- cbind.data.frame(d1_11694,d2_11694)
+names(d_11694)
+summary(d_11694)
+head(d_11694)
+
+
+dif11694_raw=as.numeric(difftime(strptime(d1_11694, "%m/%d/%Y %H:%M"),strptime(d2_11694, "%m/%d/%Y %H:%M"),units='hours')); dif11694_raw
+
+##exclude the NA(good one)
+dif11694_raw2=na.exclude(dif11694_raw)
+##pick all the negtaive value and take the abs
+dif_11694=abs(dif11694_raw2[which(dif11694_raw2 < 0)])
+##note to see if need to omit the max
+summary(dif_11694)
+
+median(dif_11694)
+
