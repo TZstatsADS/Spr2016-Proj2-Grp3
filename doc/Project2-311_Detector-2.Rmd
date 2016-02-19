@@ -1,0 +1,497 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+```{r}
+#setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/project2-group3/data")
+
+#df = read.csv("311_Short Dataset.csv")
+#Filter for noises
+#Noise_filter = grepl("Noise",df$Complaint.Type)
+#df.noise = df[Noise_filter,]
+#setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/")
+#df = read.csv("311_1 Year.csv")
+#df = read.csv("311_Full_Filtered.csv")
+#df = df[1:(nrow(df)/8),]
+
+#df = readRDS("full_filtered.rds")
+
+```
+
+Parse Dates into columns
+```{r}
+date_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Created.Date),"\\s+")))
+date_clean$X1 = as.Date(as.character(date_clean$X1),format ="%m/%d/%Y")
+colnames(date_clean) = c("Date", "Time", "AM/PM")
+df = cbind(df,date_clean)
+
+
+
+```
+
+```{r}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/")
+
+df = readRDS("full_filtered.rds")
+
+df$Complaint.Type[df$Complaint.Type == "HEATING"] = "HEAT/HOT WATER"
+
+#Filter by Date
+
+```
+
+Filter out Complaints to find the top 10 within the past # of days
+```{r}
+library(dplyr)
+#library(plyr)
+library(ggplot2)
+#percentage_min = 0.05
+Top = 10
+Past_days = 30
+todays_date = Sys.Date()
+date_filtered = filter(df,Date>(todays_date - Past_days))
+
+grop_by.Complaint.Type <- group_by(date_filtered, Complaint.Type)
+Complaint.Type <- summarize(grop_by.Complaint.Type,count = n())
+Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+
+
+Filter_Index = order(Complaint.Type$percent, decreasing = TRUE)
+Complaint.Type_filtered = Complaint.Type[Filter_Index[1:Top],]
+Unique_Complaints = as.character(Complaint.Type_filtered$Complaint.Type)
+
+ggplot(Complaint.Type_filtered, aes(x = factor(Complaint.Type), y = percent))+
+    geom_bar(stat="identity")+
+    coord_flip()
+```
+
+#Line Plots
+```{r}
+df_Unique_Complaints = filter(date_filtered,as.character(date_filtered$Complaint.Type) %in%  Unique_Complaints)
+
+grop_by.Date.Complaint <- group_by(df_Unique_Complaints, Date,Complaint.Type)
+Top.Complaints.Day <- summarise(grop_by.Date.Complaint,count = n())
+
+ggplot(data=Top.Complaints.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+    geom_line() +
+    geom_point()
+
+```
+
+```{r}
+library(AnomalyDetection)
+Anomaly_Detector = function(DataFrame_Total, Top.Complaints.Day, Compliant_Input){
+  DataFrame = Top.Complaints.Day
+  #DataFrame = DataFrame_Total
+  DataFrame_Filtered = filter(DataFrame, Complaint.Type == Compliant_Input)
+  DataFrame_Filtered2 = DataFrame_Filtered[,c("Date", "count")]
+  DataFrame_Filtered2$Date = as.POSIXct(DataFrame_Filtered2$Date)
+  
+  #Apply Detection
+  res = AnomalyDetectionTs(DataFrame_Filtered2, max_anoms=0.02, direction='pos', plot=TRUE,piecewise_median_period_weeks = 2)
+  res$plot
+  print(paste("NUMBER OF ANAMOLIES",length(res$anoms[,2])))
+  #print(res$anoms[,1])
+  #Find in Heat where the anomolies are:
+  #anom_index = which(Top.Complaints.Day$count %in% res$anoms[,2] )
+  anom_index = which(DataFrame$count %in% res$anoms[,2] )
+
+  DataFrame_anom = DataFrame[anom_index,]
+  
+  
+  
+  df_anom_index = which(DataFrame_Total$Date %in% DataFrame_anom$Date)
+  return(df_anom_index)
+}
+```
+
+ [1] "HEAT/HOT WATER"           "Street Light Condition"   "Street Condition"         "PLUMBING"                
+ [5] "GENERAL CONSTRUCTION"     "Blocked Driveway"         "Water System"             "PAINT - PLASTER"         
+ [9] "Illegal Parking"          "Traffic Signal Condition"
+
+```{r}
+#This process takes the original data frame and the complaints dataframe that is grouped by day and by compalint. It then looks for the complaint passed into the function, In this case Heat and Hot water, and returns the index of the anamolies according to DATE, this is why we then filter it again on the same complaint.
+
+
+#Need list of dates from entire dataframe that will give us counts for all the complaints. This can be used repeatedly if necessary
+All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+Complaints_total <- summarise(All.Date.Complaint,count = n())
+
+```
+
+ATTEMPT AT MULTIPLE PLOTS
+```{r}
+
+Complaint = "HEAT/HOT WATER"
+
+#Use Anonaly detector to return index anomalies of specic complaints of entire original dataframe
+test = Anomaly_Detector(df,Complaints_total, Complaint)
+#Use index to apply to orignal dataframe
+Anamolies = df[test,]
+#Filter the anamolies based on the complaint used in the search
+output = filter(Anamolies, Complaint.Type == Complaint)
+
+
+
+
+#Create filter to just look at defined complaints for entire dataframe
+complaint_filter = filter(df, Complaint.Type == Complaint)
+
+#Group for suming 
+grop_by.Date.Complaint <- group_by(complaint_filter, Date,Complaint.Type)
+#Sum each complaint per date
+DefComplaint.Day <- summarise(grop_by.Date.Complaint,count = n())
+
+#Organize for Anamolies
+group_anoms.Date.Complaint <- group_by(output[,c("Date", "Complaint.Type")], Date,Complaint.Type)
+Sum_group_anoms <- summarise(group_anoms.Date.Complaint,count = n())
+
+
+b = ggplot(data=DefComplaint.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+    geom_line() +
+    geom_point()+ 
+    xlim(c(Sys.Date()-20*4, Sys.Date()))
+
+Sum_group_anoms_dates = filter(Sum_group_anoms,Date>(todays_date - Past_days))
+
+if(length(Sum_group_anoms_dates$count) > 0){
+  MainTitle = paste("Timeline of Complaint:", Complaint)
+  b +geom_point(data=Sum_group_anoms_dates, aes(x=Date, y=count, col = "blue")) +
+    ggtitle(MainTitle)+ 
+    theme(legend.position="none")
+}else{
+  MainTitle = paste("Timeline of Complaint:", Complaint, "\n No Anamolies Detected")
+  b + ggtitle(MainTitle)+ 
+    theme(legend.position="none")
+}
+
+```
+
+
+
+Multiple Plot Attempts
+```{r}
+
+b = ggplot(data=DefComplaint.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+    geom_line() +
+    geom_point()#+ 
+    #xlim(c(Sys.Date()-20*4, Sys.Date()))
+
+for( i in Unique_Complaints){
+
+  Complaint = i
+  
+  #Use Anonaly detector to return index anomalies of specic complaints of entire original dataframe
+  test = Anomaly_Detector(df,Complaints_total, Complaint)
+  #Use index to apply to orignal dataframe
+  Anamolies = df[test,]
+  #Filter the anamolies based on the complaint used in the search
+  output = filter(Anamolies, Complaint.Type == Complaint)
+  
+  #Create filter to just look at defined complaints for entire dataframe
+  complaint_filter = filter(df, Complaint.Type == Complaint)
+  
+  #Group for suming 
+  grop_by.Date.Complaint <- group_by(complaint_filter, Date,Complaint.Type)
+  #Sum each complaint per date
+  DefComplaint.Day <- summarise(grop_by.Date.Complaint,count = n())
+  
+  #Organize for Anamolies
+  group_anoms.Date.Complaint <- group_by(output[,c("Date", "Complaint.Type")], Date,Complaint.Type)
+  Sum_group_anoms <- summarise(group_anoms.Date.Complaint,count = n())
+  
+  b + geom_line(data=DefComplaint.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+    geom_point()+ 
+    xlim(c(Sys.Date()-20*4, Sys.Date()))
+
+  
+  Sum_group_anoms_dates = filter(Sum_group_anoms,Date>(todays_date - Past_days))
+  
+  if(length(Sum_group_anoms_dates$count) > 0){
+    b=b +geom_point(data=Sum_group_anoms_dates, aes(x=Date, y=count, col = "blue")) 
+  }else{
+    b = b
+  }
+}
+```
+
+
+HEALTH SYSTEM
+
+Statistics
+```{r}
+
+#Could change this to filter and pass through everything
+#All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+#Complaints_total <- summarise(All.Date.Complaint,count = n())
+
+
+#Have to add months to columns
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(Complaints_total$Date),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+Complaints_total_grid = cbind(Complaints_total, month_clean)
+Complaints_total_grid$Month = as.numeric(Complaints_total_grid$Month)
+
+
+#group.Month <- group_by(Complaints_total_grid[,c("Month", "Complaint.Type")], Month,Complaint.Type)
+#Sum_group_Month<- summarise(group.Month,count = n())
+
+#Create matrix to store statistics
+stat_store = matrix(0, ncol = length(unique(Complaints_total_grid$Complaint.Type)), nrow = 36)
+stat_store = as.data.frame(stat_store)
+colnames(stat_store) = unique(Complaints_total_grid$Complaint.Type)
+
+#Loop through all and calculate 
+for(i in unique(Complaints_total_grid$Complaint.Type)){
+  index = 1
+  filtered = filter(Complaints_total_grid, Complaint.Type == i)
+  count = 1
+  for(j in c(1:12)){
+    filtered_month = filter(filtered, Month == j)
+    quantiles = quantile(filtered_month$count, c(.10, .50, .90))
+    stat_store[c((count):(count+2)),i] = quantiles
+    count = count + 3
+  }
+  index = index + 1
+
+}
+
+```
+
+
+```{r}
+
+# 
+# Top = 10
+# Past_days = 30
+# date_filtered = filter(df,Date>(todays_date - Past_days))
+# 
+# grop_by.Complaint.Type <- group_by(date_filtered, Complaint.Type)
+# Complaint.Type <- summarize(grop_by.Complaint.Type,count = n())
+# Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+# 
+
+#Filter_Index = order(Complaint.Type$percent, decreasing = TRUE)
+#Complaint.Type_filtered = Complaint.Type[Filter_Index[1:Top],]
+#Unique_Complaints = as.character(Complaint.Type_filtered$Complaint.Type)
+
+#Filter statistics based on complaints
+top_stat_store = stat_store[,Unique_Complaints]
+
+#Filter on month 
+test = 2
+start_date = "2015-02-01"
+end_date = "2015-02-28"
+month_fiter = filter(Complaints_total_grid[,c("Date","Month", "Complaint.Type", "count")],Month == test & Complaint.Type %in% Unique_Complaints & Date < end_date & Date >start_date )
+group.Month <- group_by(month_fiter, Month,Complaint.Type)
+Sum_group_Month<- summarise(group.Month,avg = mean(count))
+
+#Filter for Jan
+Jan = top_stat_store[1:3,]
+Feb = top_stat_store[4:6,]
+Mar = top_stat_store[7:9,]
+Apr = top_stat_store[10:12,]
+May = top_stat_store[13:15,]
+Jun = top_stat_store[16:18,]
+Jul = top_stat_store[19:21,]
+Aug = top_stat_store[22:24,]
+Sep = top_stat_store[25:27,]
+Oct = top_stat_store[28:30,]
+Nov = top_stat_store[31:33,]
+Dec = top_stat_store[34:36,]
+
+#Create color matrix for heat map
+Jan = Feb
+Jan_color = Feb[1,]
+colnames(Jan_color)
+
+for( i in Sum_group_Month$Complaint.Type){
+  month_fiter2 = filter(Sum_group_Month,Complaint.Type == i)
+  if(month_fiter2$avg<Jan[,i][1]){
+    Jan_color[1,i] = 1
+  }else if(month_fiter2$avg<Jan[,i][2]){
+    Jan_color[1,i] = 2
+  }else if(month_fiter2$avg<Jan[,i][3]){
+    Jan_color[1,i] = 3
+  }else{
+    Jan_color[1,i] = 4
+  }
+}
+    
+
+
+```
+
+
+```{r}
+a = data.frame(t(Jan_color))
+a$names = rownames(a)
+a$Health = 1
+colnames(a) = c("X1", "names", "Health")
+rownames(a) = c(1:nrow(a))
+ggplot(a, aes(Health, names, width=.01)) + 
+  geom_tile(aes(fill = X1), colour = "white")  +
+  scale_fill_gradient(low = "LightSkyBlue", high = "LightCoral", na.value = "black", limits=c(1, 4))+ 
+  theme(axis.ticks = element_line(size = 0), axis.text.x = element_text(size = 0)) + 
+  xlab("Heath of System") +
+  theme(panel.background = element_blank())
+
+
+```
+
+
+
+
+
+
+Statistics
+```{r}
+test = function(crazyf, month, Unique_Complaints){
+#Have to add months to columns
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(crazyf$Date),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+Complaints_total_grid = cbind(crazyf, month_clean)
+Complaints_total_grid$Month = as.numeric(Complaints_total_grid$Month)
+
+
+#group.Month <- group_by(Complaints_total_grid[,c("Month", "Complaint.Type")], Month,Complaint.Type)
+#Sum_group_Month<- summarise(group.Month,count = n())
+
+#Create matrix to store statistics
+stat_store = matrix(0, ncol = length(unique(Complaints_total_grid$Complaint.Type)), nrow = 36)
+stat_store = as.data.frame(stat_store)
+colnames(stat_store) = unique(Complaints_total_grid$Complaint.Type)
+
+#Loop through all and calculate 
+for(i in Unique_Complaints){
+  index = 1
+  filtered = filter(Complaints_total_grid, Complaint.Type == i)
+  count = 1
+  for(j in c(1:12)){
+    filtered_month = filter(filtered, Month == j)
+    quantiles = quantile(filtered_month$count, c(.10, .50, .90))
+    stat_store[c((count):(count+2)),i] = quantiles
+    count = count + 3
+  }
+  index = index + 1
+
+}
+
+top_stat_store = stat_store[,Unique_Complaints]
+
+#Filter on month 
+test = month
+start_date = "2015-02-01"
+
+end_date = "2015-02-28"
+month_fiter = filter(Complaints_total_grid[,c("Date","Month", "Complaint.Type", "count")],Month == test & Complaint.Type %in% Unique_Complaints & Date < end_date & Date >start_date )
+group.Month <- group_by(month_fiter, Month,Complaint.Type)
+Sum_group_Month<- summarise(group.Month,avg = mean(count))
+
+#Filter for Jan
+Jan = top_stat_store[1:3,]
+Feb = top_stat_store[4:6,]
+Mar = top_stat_store[7:9,]
+Apr = top_stat_store[10:12,]
+May = top_stat_store[13:15,]
+Jun = top_stat_store[16:18,]
+Jul = top_stat_store[19:21,]
+Aug = top_stat_store[22:24,]
+Sep = top_stat_store[25:27,]
+Oct = top_stat_store[28:30,]
+Nov = top_stat_store[31:33,]
+Dec = top_stat_store[34:36,]
+
+if( month == 1){
+    Calc = Jan
+}else if( month == 2){
+    Calc = Feb
+}else if( month == 3){
+    Calc = Mar
+
+}else if( month == 4){
+    Calc = Apr
+
+}else if( month == 5){
+    Calc = May
+
+}else if( month == 6){
+  Calc = Jun
+  
+}else if( month == 7){
+  Calc = Jul
+  
+}else if( month == 8){
+  Calc = Aug
+  
+}else if( month == 9){
+  Calc = Sep
+  
+}else if( month == 10){
+  Calc = Oct
+  
+}else if( month == 11){
+  Calc = Nov
+  
+}else {
+  Calc = Dec
+}
+
+#Create color matrix for heat map
+Jan_color = Feb[1,]
+colnames(Jan_color)
+
+for( i in Sum_group_Month$Complaint.Type){
+  month_fiter2 = filter(Sum_group_Month,Complaint.Type == i)
+  if(month_fiter2$avg<Calc[,i][1]){
+    Jan_color[1,i] = 1
+  }else if(month_fiter2$avg<Calc[,i][2]){
+    Jan_color[1,i] = 2
+  }else if(month_fiter2$avg<Calc[,i][3]){
+    Jan_color[1,i] = 3
+  }else{
+    Jan_color[1,i] = 4
+  }
+}
+    
+a = data.frame(t(Jan_color))
+a$Complaints = rownames(a)
+a$Health = 1
+colnames(a) = c("Health", "Complaints", "Health")
+rownames(a) = c(1:nrow(a))
+return (a)
+}
+
+```
+
+```{r}
+All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+Complaints_total <- summarise(All.Date.Complaint,count = n())
+a = test(Complaints_total, 2)
+
+burrrr = as.character(unique(df$Borough))
+b = data.frame()
+for(i in burrrr){
+  input = filter(df, Borough == i)
+  All.Date.Complaint <- group_by(input, Date,Complaint.Type)
+  Complaints_total <- summarise(All.Date.Complaint,count = n())
+  a = test(Complaints_total, 2,Unique_Complaints)
+  a$Borough = i
+  b = rbind(b,a)
+}
+
+```
+
+```{r}
+ggplot(b, aes(Borough, Complaints)) + 
+  geom_tile(aes(fill = Health), colour = "white")  +
+  scale_fill_gradient(low = "LightSkyBlue", high = "LightCoral", na.value = "grey", limits=c(1, 4))
+  #theme(axis.ticks = element_line(size = 0), axis.text.x = element_text(size = 0)) + 
+
+```
+
+

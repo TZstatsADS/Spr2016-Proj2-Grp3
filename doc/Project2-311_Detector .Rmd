@@ -1,0 +1,189 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+```{r}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/project2-group3/data")
+
+df = read.csv("311_Short Dataset.csv")
+#Filter for noises
+#Noise_filter = grepl("Noise",df$Complaint.Type)
+#df.noise = df[Noise_filter,]
+#setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/")
+#test = read.csv("311_1 Year.csv")
+#df = read.csv("Complaints_12_per.csv")
+
+```
+
+Parse Dates into columns
+```{r}
+date_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Created.Date),"\\s+")))
+date_clean$X1 = as.Date(as.character(date_clean$X1),format ="%m/%d/%Y")
+colnames(date_clean) = c("Date", "Time", "AM/PM")
+df = cbind(df,date_clean)
+
+```
+
+Filter out Complaints below percentage_min.
+```{r}
+library(dplyr)
+#library(plyr)
+library(ggplot2)
+#percentage_min = 0.05
+Top = 30
+
+grop_by.Complaint.Type <- group_by(df, Complaint.Type)
+Complaint.Type <- summarize(grop_by.Complaint.Type,count = n())
+Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+
+
+Filter_Index = order(Complaint.Type$percent, decreasing = TRUE)
+Complaint.Type_filtered = Complaint.Type[Filter_Index[1:Top],]
+#Complaint.Type_filtered = filter(Complaint.Type,percent > percentage_min)
+
+ggplot(Complaint.Type_filtered, aes(x = factor(Complaint.Type), y = percent))+
+    geom_bar(stat="identity")+
+    coord_flip()
+Unique_Complaints = as.character(Complaint.Type_filtered$Complaint.Type)
+```
+
+#Date Range 
+seq(Sys.Date() - 20,Sys.Date(),1)
+
+```{r}
+df_Unique_Complaints = filter(df,as.character(df$Complaint.Type) %in%  Unique_Complaints)
+
+grop_by.Date.Complaint <- group_by(df_Unique_Complaints, Date,Complaint.Type)
+Top.Complaints.Day <- summarise(grop_by.Date.Complaint,count = n())
+
+ggplot(data=Top.Complaints.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+    geom_line() +
+    geom_point()
+
+```
+
+```{r}
+#155 Unique Compliant Types
+df_Unique_Complaints = filter(df,as.character(df$Complaint.Type) %in%  Unique_Complaints)
+Dates = unique(df_Unique_Complaints$Created.Date)
+df_Unique_Complaints$ones = 1
+p <- ggplot(df_Unique_Complaints, aes(x=Created.Date, y=ones, group=Complaint.Type))
+
+df_Unique_Complaints$Created.Date2 <- strptime(as.character(df_Unique_Complaints$Created.Date), "%m/%d%Y %t %I:%M:%S %t %p")
+df_weather$newdate<- format(df_Unique_Complaints$Created.Date2, "%m/%d/%y")
+
+grop_by.Complaint.Type <- group_by(df, Complaint.Type)
+Complaint.Type <- summarise(grop_by.Complaint.Type,count = n())
+Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+
+test = as.character(df_Unique_Complaints$Created.Date)
+a = str_split(test, "/|\\s+")
+time_df = t(data.frame(a))
+colnames(time_df) = c("Month","Day","Year","Time", "AM/PM")
+row.names(time_df) = c(1:nrow(time_df))
+final_df = cbind(df_Unique_Complaints,time_df)
+
+##
+R =  within(time_df, { timestamp=format(as.POSIXct(paste(Date, Hour,Minute)), "%m/%d/%Y") })
+
+row.names(time_df) = c(1:nrow(time_df))
+final_df = cbind(df_Unique_Complaints,time_df)
+final_df$Date = as.character(final_df$Date)
+final_df$Date <- as.POSIXct(final_df$Date, "%m/%d/%Y", tz = "PST8PDT")
+#final_df$Date <- as.POSIXlt(final_df$Date, origin = "%m-%d-%Y", format ="%m/%d/%Y" )
+
+final_df$Day <- as.character( round(final_df[,"Date"] , "day" ) )
+
+require(plyr)
+ddply( df , .(Day) , summarise , Count = length(EventType) )
+
+
+#final_df$Date<- format(final_df$Date, "%m/%d/%y")
+
+
+
+
+
+
+#####
+#test2 <- strptime(test, "%D %T %p")
+grop_by.Complaint.Type <- group_by(final_df[,c("Complaint.Type","Day")], Complaint.Type)
+Complaint.Type <- summarise(grop_by.Complaint.Type,count = n())
+Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+
+print(test)
+print(test2)
+
+#p <- ggplot(df_Unique_Complaints, aes(x=Created.Date, y=number, group=rating))
+#p + geom_line()
+```
+
+
+##TRYING TO FIX TIME
+
+```{r}
+#02/12/2016 02:13:09 AM
+
+
+a = as.character("02-01-2011")
+b = as.character("02-01-2010")
+c = as.character("02-02-2010")
+d = as.character("02-02-2010")
+
+a = as.Date(a,format ="%m-%d-%Y")
+b = as.Date(b,format ="%m-%d-%Y")
+c = as.Date(c,format ="%m-%d-%Y")
+d = as.Date(d,format ="%m-%d-%Y")
+
+aa = "Benefit Card Replacement"
+bb = "Blocked Driveway"
+cc = "Broken Muni Meter" 
+dd = "Broken Muni Metert" 
+
+aaa = "AAA"
+bbb = "BBB"
+ccc = "CCC" 
+ddd = "DDD" 
+
+
+testdf = as.data.frame(c(a,b,c,d))
+testdf = cbind(testdf,c(aa,bb,cc,dd))
+testdf = cbind(testdf,c(aaa,bbb,ccc,ddd))
+
+testdf = rbind(testdf,testdf)
+testdf = rbind(testdf,testdf)
+
+colnames(testdf) = c("Date", "Compliant","Test")
+
+#subset(testdf, Date <c )
+
+grop_by.Complaint.Type <- group_by(testdf, Date,Compliant,Test)
+Complaint.Type <- summarise(grop_by.Complaint.Type,count = n())
+
+Complaint.Type
+
+
+test2 = as.character(df$Created.Date)
+test2a = str_split(test, "\\s+")
+time_df = t(data.frame(test2a))
+colnames(time_df) = c("Date","Time","AM/PM")
+row.names(time_df) = c(1:nrow(time_df))
+final_df = cbind(df,time_df)
+
+test3a = matrix(test2a,ncol = 5)
+
+foo <- data.frame(do.call('rbind', strsplit(as.character(df$Created.Date),"\\s+")))
+foo$X1 = as.Date(as.character(foo$X1),format ="%m/%d/%Y")
+colnames(foo) = c("Date", "Time", "AM/PM")
+df3 = cbind(df,foo)
+
+grop_by.Complaint.Type <- group_by(df3, Date,Complaint.Type)
+Complaint.Type <- summarise(grop_by.Complaint.Type,count = n())
+
+#Need to pass in filteed dataframe first.
+
+```
