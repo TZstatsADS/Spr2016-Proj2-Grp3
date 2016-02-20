@@ -4,7 +4,8 @@ author: "Team"
 date: "February 13, 2016"
 output: html_document
 ---
-
+#NEED 2 functions.
+Anamolyies will take 10 Complaints
 
 ```{r}
 #setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/project2-group3/data")
@@ -29,6 +30,9 @@ date_clean$X1 = as.Date(as.character(date_clean$X1),format ="%m/%d/%Y")
 colnames(date_clean) = c("Date", "Time", "AM/PM")
 df = cbind(df,date_clean)
 
+
+date_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Created.Date),"\\s+")))
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(Complaints_total$Date),"-")))
 
 
 ```
@@ -81,6 +85,21 @@ ggplot(data=Top.Complaints.Day, aes(x=Date, y=count, group=Complaint.Type, colou
     geom_point()
 
 ```
+#######################
+#####################################################################
+############################################################################################
+#####################################################################
+#######################
+#######################
+#####################################################################
+############################################################################################
+#####################################################################
+#######################
+#######################
+#####################################################################
+############################################################################################
+#####################################################################
+#######################
 
 ```{r}
 library(AnomalyDetection)
@@ -91,23 +110,74 @@ Anomaly_Detector = function(DataFrame_Total, Top.Complaints.Day, Compliant_Input
   DataFrame_Filtered2 = DataFrame_Filtered[,c("Date", "count")]
   DataFrame_Filtered2$Date = as.POSIXct(DataFrame_Filtered2$Date)
   
+  if(dim(DataFrame_Filtered2)[1]<50){
+    return(0)
+    }else{
   #Apply Detection
-  res = AnomalyDetectionTs(DataFrame_Filtered2, max_anoms=0.02, direction='pos', plot=TRUE,piecewise_median_period_weeks = 2)
-  res$plot
-  print(paste("NUMBER OF ANAMOLIES",length(res$anoms[,2])))
+  res = AnomalyDetectionTs(DataFrame_Filtered2, max_anoms=0.02, direction='pos', plot=FALSE,piecewise_median_period_weeks = 2)
+  print(res)
+    }
+  if(length(res$anoms) == 0){
+    return(0)
+  }else{
+  #print(paste("NUMBER OF ANAMOLIES",length(res$anoms[,2])))
   #print(res$anoms[,1])
   #Find in Heat where the anomolies are:
   #anom_index = which(Top.Complaints.Day$count %in% res$anoms[,2] )
   anom_index = which(DataFrame$count %in% res$anoms[,2] )
-
   DataFrame_anom = DataFrame[anom_index,]
-  
-  
-  
-  df_anom_index = which(DataFrame_Total$Date %in% DataFrame_anom$Date)
-  return(df_anom_index)
+  #df_anom_index = which(DataFrame_Total$Date %in% DataFrame_anom$Date)
+  a = filter(DataFrame_anom, Complaint.Type == Compliant_Input )
+  return(a)
+  }
 }
 ```
+
+```{r}
+Compliant_Input ="DOF Property - Update Account"
+  DataFrame = Complaints_total
+  #DataFrame = DataFrame_Total
+  DataFrame_Filtered = filter(DataFrame, Complaint.Type == Compliant_Input)
+  DataFrame_Filtered2 = DataFrame_Filtered[,c("Date", "count")]
+  DataFrame_Filtered2$Date = as.POSIXct(DataFrame_Filtered2$Date)
+  
+  #Apply Detection
+  res = AnomalyDetectionTs(DataFrame_Filtered2, max_anoms=0.02, direction='pos', plot=FALSE,piecewise_median_period_weeks = 2)
+
+  #print(paste("NUMBER OF ANAMOLIES",length(res$anoms[,2])))
+  #print(res$anoms[,1])
+  #Find in Heat where the anomolies are:
+  #anom_index = which(Top.Complaints.Day$count %in% res$anoms[,2] )
+  anom_index = which(DataFrame$count %in% res$anoms[,2] )
+  DataFrame_anom = DataFrame[anom_index,]
+  #df_anom_index = which(DataFrame_Total$Date %in% DataFrame_anom$Date)
+  #a = filter(df[df_anom_index,], Complaint.Type == Compliant_Input )
+  return(DataFrame_anom)
+
+```
+
+
+```{r}
+library(dplyr)
+All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+Complaints_total <- summarise(All.Date.Complaint,count = n())
+
+anaom_df = data.frame()
+UniqueComplaints = as.character(unique(df$Complaint.Type))
+#UniqueComplaints = c("PAINT - PLASTER" ,"HEAT/HOT WATER" )
+anaom_df = data.frame()
+
+for(i in UniqueComplaints){
+  test = Anomaly_Detector(df,Complaints_total, i)
+  if(test == 0){
+    
+  }else{
+  test_df = data.frame(test)
+  anaom_df = rbind(anaom_df,test_df)
+  }
+}
+```
+
 
  [1] "HEAT/HOT WATER"           "Street Light Condition"   "Street Condition"         "PLUMBING"                
  [5] "GENERAL CONSTRUCTION"     "Blocked Driveway"         "Water System"             "PAINT - PLASTER"         
@@ -116,17 +186,21 @@ Anomaly_Detector = function(DataFrame_Total, Top.Complaints.Day, Compliant_Input
 ```{r}
 #This process takes the original data frame and the complaints dataframe that is grouped by day and by compalint. It then looks for the complaint passed into the function, In this case Heat and Hot water, and returns the index of the anamolies according to DATE, this is why we then filter it again on the same complaint.
 
+```
+
+```{r}
 
 #Need list of dates from entire dataframe that will give us counts for all the complaints. This can be used repeatedly if necessary
 All.Date.Complaint <- group_by(df, Date,Complaint.Type)
 Complaints_total <- summarise(All.Date.Complaint,count = n())
-
-```
-
-ATTEMPT AT MULTIPLE PLOTS
-```{r}
+todays_date = Sys.Date()
 
 Complaint = "HEAT/HOT WATER"
+#Complaint = "Water System"
+#Complaint = "PAINT/PLASTER"
+
+Past_days = 30
+
 
 #Use Anonaly detector to return index anomalies of specic complaints of entire original dataframe
 test = Anomaly_Detector(df,Complaints_total, Complaint)
@@ -358,8 +432,8 @@ Complaints_total_grid = cbind(crazyf, month_clean)
 Complaints_total_grid$Month = as.numeric(Complaints_total_grid$Month)
 
 
-#group.Month <- group_by(Complaints_total_grid[,c("Month", "Complaint.Type")], Month,Complaint.Type)
-#Sum_group_Month<- summarise(group.Month,count = n())
+group.Month <- group_by(Complaints_total_grid[,c("Month", "Complaint.Type")], Month,Complaint.Type)
+Sum_group_Month<- summarise(group.Month,count = n())
 
 #Create matrix to store statistics
 stat_store = matrix(0, ncol = length(unique(Complaints_total_grid$Complaint.Type)), nrow = 36)
@@ -495,3 +569,28 @@ ggplot(b, aes(Borough, Complaints)) +
 ```
 
 
+
+```{r}
+anaom_df = readRDS("Anamolies.RDS")
+
+complaint_list = c("PAINT - PLASTER" ,"HEAT/HOT WATER" ,"Blocked Driveway")
+end_date = as.Date("2014-02-26")
+start_date = end_date-40*4
+anaom_plotter = function(complaint_list,start_date, end_date, anaom_df){
+
+    df_filter <- filter(df, Complaint.Type %in% complaint_list)
+    grop_by.Date.Complaint <- group_by(df_filter, Date,Complaint.Type)
+    Top.Complaints.Day <- summarise(grop_by.Date.Complaint,count = n())
+    
+    Sum_group_anoms_dates = filter(anaom_df, Complaint.Type %in% complaint_list)
+    b = ggplot(data=Top.Complaints.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+        geom_line() +
+        geom_point(data=Sum_group_anoms_dates, aes(x=Date, y=count,colour = Complaint.Type), size=2)+
+        xlim(c(start_date, end_date))
+        
+    print(b)
+}
+
+anaom_plotter(Unique_Complaints,start_date, end_date, anaom_df)
+
+```

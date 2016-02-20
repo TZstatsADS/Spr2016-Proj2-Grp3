@@ -1,0 +1,40 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+anaom_plotter = function(complaint_list,start_date, end_date, anaom_df,total_df){
+
+    df_filter <- filter(df, Complaint.Type %in% complaint_list)
+    grop_by.Date.Complaint <- group_by(df_filter, Date,Complaint.Type)
+    Top.Complaints.Day <- summarise(grop_by.Date.Complaint,count = n())
+    
+    Sum_group_anoms_dates = filter(anaom_df, Complaint.Type %in% complaint_list)
+    b = ggplot(data=Top.Complaints.Day, aes(x=Date, y=count, group=Complaint.Type, colour=Complaint.Type)) +
+        geom_line() +
+        geom_point(data=Sum_group_anoms_dates, aes(x=Date, y=count,colour = Complaint.Type), size=2)+
+        xlim(c(start_date, end_date))
+        
+    print(b)
+}
+
+
+df = readRDS("full_filtered.rds")
+df$Complaint.Type[df$Complaint.Type == "HEATING"] = "HEAT/HOT WATER"
+
+anaom_df = readRDS("Anamolies.RDS")
+
+complaint_list = c("PAINT - PLASTER" ,"HEAT/HOT WATER" ,"Blocked Driveway")
+
+end_date = as.Date("2014-02-26")
+start_date = end_date-40*4
+
+anaom_plotter(complaint_list,start_date, end_date, anaom_df,df)
+
+```
