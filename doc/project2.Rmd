@@ -1,0 +1,38 @@
+---
+title: "project2"
+output: html_document
+---
+
+
+
+```{r}
+library(dplyr)
+`311_Service_Requests_from_2010_to_Present` <- read.csv("~/Desktop/project2/311_Service_Requests_from_2010_to_Present.csv")
+request_short=`311_Service_Requests_from_2010_to_Present`
+re.no=
+  request_short%>%
+  mutate(region=as.character(Incident.Zip))
+count.df=re.no%>%
+  group_by(region)%>%
+  summarise(
+  value=n()
+  )
+```
+
+```{r}
+library(devtools)
+#install_github('arilamstein/choroplethrZip@v1.4.0')
+#install_github("arilamstein/choroplethrCaCensusTract@v1.1.0")
+library(choroplethrZip)
+nyc_fips = c(36005, 36047, 36061, 36081, 36085)#zip code for new york city
+zip_choropleth(count.df,
+    title       = "Geographic Dispay of 311 Requests",
+    legend      = "Number of complaints",
+    county_zoom = nyc_fips
+)
+```
+
+
+```{r}
+
+```
