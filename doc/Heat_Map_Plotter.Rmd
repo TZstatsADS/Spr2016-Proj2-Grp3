@@ -1,0 +1,21 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+
+Statistics
+```{r}
+
+b = readRDS("b.RDS")
+c = filter(b, Month == 8, Year == "2012")
+ggplot(c, aes(Borough, Complaints)) + 
+  geom_tile(aes(fill = Health), colour = "white")  +
+  scale_fill_gradient(low = "LightSkyBlue", high = "LightCoral", na.value = "grey", limits=c(1, 4))
+  #theme(axis.ticks = element_line(size = 0), axis.text.x = element_text(size = 0)) + 
+
+```
+

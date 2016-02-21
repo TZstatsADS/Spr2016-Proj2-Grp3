@@ -300,8 +300,8 @@ Statistics
 ```{r}
 
 #Could change this to filter and pass through everything
-#All.Date.Complaint <- group_by(df, Date,Complaint.Type)
-#Complaints_total <- summarise(All.Date.Complaint,count = n())
+All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+Complaints_total <- summarise(All.Date.Complaint,count = n())
 
 
 #Have to add months to columns
@@ -547,8 +547,20 @@ All.Date.Complaint <- group_by(df, Date,Complaint.Type)
 Complaints_total <- summarise(All.Date.Complaint,count = n())
 a = test(Complaints_total, 2)
 
+date_filtered = filter(df,Date>(todays_date - Past_days))
+
+grop_by.Complaint.Type <- group_by(date_filtered, Complaint.Type)
+Complaint.Type <- summarize(grop_by.Complaint.Type,count = n())
+Complaint.Type$percent <- Complaint.Type$count/sum(Complaint.Type$count)
+
+Filter_Index = order(Complaint.Type$percent, decreasing = TRUE)
+Complaint.Type_filtered = Complaint.Type[Filter_Index[1:20],]
+Unique_Complaints = as.character(Complaint.Type_filtered$Complaint.Type)
+
+
 burrrr = as.character(unique(df$Borough))
 b = data.frame()
+
 for(i in burrrr){
   input = filter(df, Borough == i)
   All.Date.Complaint <- group_by(input, Date,Complaint.Type)

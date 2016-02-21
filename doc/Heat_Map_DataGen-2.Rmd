@@ -1,0 +1,429 @@
+---
+title: "Data Parse"
+author: "Team"
+date: "February 13, 2016"
+output: html_document
+---
+
+
+
+Statistics
+```{r}
+test = function(Complaints_total_grid_df, Year_Input, Unique_Complaints,month,area){
+if(area == "BRONX"){
+  stat_store = readRDS("stat_store_Bronx.RDS")
+}else if (area == "BROOKLYN"){
+  stat_store = readRDS("stat_store_Bro.RDS")
+}else if (area == "MANHATTAN"){
+  stat_store = readRDS("stat_store_M.RDS")
+}else if (area == "QUEENS"){
+  stat_store = readRDS("stat_store_Q.RDS")
+}else if(area == "STATEN ISLAND"){
+  stat_store = readRDS("stat_store_Stat.RDS")
+}else{
+  stat_store = readRDS("stat_store_U.RDS")
+}
+stat_store$`PAINT/PLASTER` = stat_store$`PAINT - PLASTER`
+
+
+
+top_stat_store = stat_store[,Unique_Complaints]
+
+
+
+#month_fiter = filter(Complaints_total_grid_df[,c("Date","Month","Year", "Complaint.Type", "Borough")],Month == #month & Complaint.Type %in% Unique_Complaints & Year == Year_Input & Borough == area)
+
+#group.Month <- group_by(month_fiter[,c("Complaint.Type","Month")],Complaint.Type, Month)
+#Sum_group_Month<- summarise(group.Month,count = n())
+
+#Sum_group_Month<- summarise(group.Month,avg = mean(count))
+
+#Sum_group_Month$count = Sum_group_Month$count/length(unique(month_fiter$Date))
+
+
+#Filter for Jan
+Jan = top_stat_store[1:3,]
+Feb = top_stat_store[4:6,]
+Mar = top_stat_store[7:9,]
+Apr = top_stat_store[10:12,]
+May = top_stat_store[13:15,]
+Jun = top_stat_store[16:18,]
+Jul = top_stat_store[19:21,]
+Aug = top_stat_store[22:24,]
+Sep = top_stat_store[25:27,]
+Oct = top_stat_store[28:30,]
+Nov = top_stat_store[31:33,]
+Dec = top_stat_store[34:36,]
+
+if( month == 1){
+    Calc = Jan
+}else if( month == 2){
+    Calc = Feb
+}else if( month == 3){
+    Calc = Mar
+
+}else if( month == 4){
+    Calc = Apr
+
+}else if( month == 5){
+    Calc = May
+
+}else if( month == 6){
+  Calc = Jun
+  
+}else if( month == 7){
+  Calc = Jul
+  
+}else if( month == 8){
+  Calc = Aug
+  
+}else if( month == 9){
+  Calc = Sep
+  
+}else if( month == 10){
+  Calc = Oct
+  
+}else if( month == 11){
+  Calc = Nov
+  
+}else {
+  Calc = Dec
+}
+
+#Create color matrix for heat map
+
+c_df = data.frame()
+count = 1
+    filtered = filter(Complaints_total_grid_df, Borough == area, Month == month)
+
+for( i in Unique_Complaints){
+  if(i %in% unique(filtered$Complaint.Type)){
+  i = as.character(i)
+   filtered_month = filter(filtered, Complaint.Type == i)
+    group.Month <- group_by(filtered_month[,c("Month", "Complaint.Type","Day")],Day)
+    Sum_group_Month<- summarise(group.Month,count = n())
+    compare = mean(Sum_group_Month$count)
+  month_fiter2 = compare
+  }else{
+  month_fiter2 = 0
+}
+  #month_fiter2 = filter(Sum_group_Month,Complaint.Type == i)
+  #print("Count")
+  #print(month_fiter2$count)
+  #print("Global Mean")
+  #print(Calc[,i][2])
+  if(is.na(Calc[,i][1]) | is.na(Calc[,i][2]) | is.na(Calc[,i][3])){
+    c_df[count,1] = 1
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+  }else{
+  if(month_fiter2<Calc[,i][1]){
+    c_df[count,1] = 1
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+  }else if(month_fiter2<Calc[,i][2]){
+    c_df[count,1] = 2
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+
+  }else if(month_fiter2<Calc[,i][3]){
+    c_df[count,1] = 3
+    c_df[count,2] = i
+        c_df[count,3] = month_fiter2
+
+  }else{
+    c_df[count,1] = 4
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+
+  }}
+  count = count + 1
+}
+    
+#a = data.frame(t(Jan_color))
+#a$Complaints = rownames(a)
+colnames(c_df) = c("Health", "Complaints", "Counts")
+#rownames(a) = c(1:nrow(a))
+return (c_df)
+}
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/")
+
+df = readRDS("full_filtered.rds")
+
+df$Complaint.Type[df$Complaint.Type == "HEATING"] = "HEAT/HOT WATER"
+
+#All.Date.Complaint <- group_by(df, Date,Complaint.Type)
+#Complaints_total <- summarise(All.Date.Complaint,count = n())
+
+Unique_Complaints = unique(df$Complaint.Type)
+bur = as.character(unique(df$Borough))
+
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Date),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+Complaints_total_grid_df = cbind(df, month_clean)
+Complaints_total_grid_df$Month = as.numeric(Complaints_total_grid_df$Month)
+
+#All <- group_by(Complaints_total_grid_df, Month,Complaint.Type)
+#Complaints_Month <- summarise(All,count = n())
+
+
+
+group.Month <- group_by(Complaints_total_grid_df[,c("Month", "Complaint.Type")], Month,Complaint.Type)
+Sum_group_Month<- summarise(group.Month,count = n())
+
+#Create matrix to store statistics
+stat_store = matrix(0, ncol = length(unique(Complaints_total_grid_df$Complaint.Type)), nrow = 36)
+stat_store = as.data.frame(stat_store)
+colnames(stat_store) = unique(Complaints_total_grid_df$Complaint.Type)
+
+
+
+
+
+Complaints_total_grid_df_B = filter(Complaints_total_grid_df, Borough == "MANHATTAN")
+#QUEENS        Unspecified   MANHATTAN     BRONX         BROOKLYN      STATEN ISLAND
+#Loop through all and calculate
+for(i in Unique_Complaints){
+  index = 1
+  filtered = filter(Complaints_total_grid_df_B, Complaint.Type == i)
+  count = 1
+  for(j in c(1:12)){
+    filtered_month = filter(filtered, Month == j)
+    group.Month <- group_by(filtered_month[,c("Month", "Complaint.Type","Day")],Day)
+    Sum_group_Month<- summarise(group.Month,count = n())
+
+    quantiles = quantile(Sum_group_Month$count, c(.10, .50, .90))
+    stat_store[c((count):(count+2)),i] = quantiles
+    count = count + 3
+  }
+  index = index + 1
+}
+
+saveRDS(stat_store, "stat_store_M.RDS")
+```
+
+CALCULATE STAT STORES FOR ALL BUROUGHS 
+```{r}
+library(dplyr)
+library(ggplot2)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/Applied_Data_Science/")
+Complaints_total_grid_df = readRDS("Complaints_total_grid_df.RDS")
+Complaints_total_grid_df$Borough = as.character(Complaints_total_grid_df$Borough)
+All <- group_by(Complaints_total_grid_df, Month,Complaint.Type, Year)
+Complaints_Month <- summarise(All,count = n())
+
+stat_store$`PAINT/PLASTER` = stat_store$`PAINT - PLASTER`
+```
+
+
+```{r}
+
+b = data.frame()
+a = data.frame()
+
+#Complaints_total_grid_df
+YEARS= unique(Complaints_total_grid_df$Year)
+#YEARS = c("2015", "2016")
+bur = as.character(unique(Complaints_total_grid_df$Borough))
+bur = bur[-2]
+#bur = "Queens"
+#stat_store = readRDS("stat_store.RDS")
+
+for(j in YEARS){
+  #Need to filter Unique Complaints for the Month
+    if(j == "2016"){
+      end = 2
+    }else{
+      end = 12
+    }
+  #end = 2
+    for(k in c(1:end)){
+          Complaints_Month_filtered = filter(Complaints_Month, Month == k & Year == j)
+          Filter_Index = order(Complaints_Month_filtered$count, decreasing = TRUE)
+          Complaint.Type_filtered = Complaints_Month_filtered[Filter_Index[1:10],]
+          Unique_Complaints = as.character(Complaint.Type_filtered$Complaint.Type)
+
+      for(i in bur){
+
+        #input = filter(df, Borough == i, Year == k)
+        #All.Date.Complaint <- group_by(input, Date,Complaint.Type)
+        #Complaints_total <- summarise(All.Date.Complaint,count = n())
+        a = test(Complaints_total_grid_df, j,Unique_Complaints,k,i)
+        a$Borough = i
+        a$Year = j
+        a$Month = k
+        b = rbind(b,a)
+      }
+    }
+}
+
+saveRDS(b,"b.RDS")
+
+```
+
+
+
+```{r}
+c = filter(b, Year == "2015", Month == 1)
+ggplot(c, aes(Borough, Complaints)) + 
+  geom_tile(aes(fill = Health), colour = "white")  +
+  scale_fill_gradient(low = "LightSkyBlue", high = "LightCoral", na.value = "grey", limits=c(1, 4))
+  #theme(axis.ticks = element_line(size = 0), axis.text.x = element_text(size = 0)) + 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+area = i
+Year_Input = j
+month = k
+if(area == "BRONX"){
+  stat_store = readRDS("stat_store_Bronx.RDS")
+}else if (area == "BROOKLYN"){
+  stat_store = readRDS("stat_store_Bro.RDS")
+}else if (area == "MANHATTAN"){
+  stat_store = readRDS("stat_store_M.RDS")
+}else if (area == "QUEENS"){
+  stat_store = readRDS("stat_store_Q.RDS")
+}else if(area == "STATEN ISLAND"){
+  stat_store = readRDS("stat_store_Stat.RDS")
+}else{
+  stat_store = readRDS("stat_store_U.RDS")
+}
+stat_store$`PAINT/PLASTER` = stat_store$`PAINT - PLASTER`
+
+
+
+top_stat_store = stat_store[,Unique_Complaints]
+
+
+
+#month_fiter = filter(Complaints_total_grid_df[,c("Date","Month","Year", "Complaint.Type", "Borough")],Month == #month & Complaint.Type %in% Unique_Complaints & Year == Year_Input & Borough == area)
+
+#group.Month <- group_by(month_fiter[,c("Complaint.Type","Month")],Complaint.Type, Month)
+#Sum_group_Month<- summarise(group.Month,count = n())
+
+#Sum_group_Month<- summarise(group.Month,avg = mean(count))
+
+#Sum_group_Month$count = Sum_group_Month$count/length(unique(month_fiter$Date))
+
+
+#Filter for Jan
+Jan = top_stat_store[1:3,]
+Feb = top_stat_store[4:6,]
+Mar = top_stat_store[7:9,]
+Apr = top_stat_store[10:12,]
+May = top_stat_store[13:15,]
+Jun = top_stat_store[16:18,]
+Jul = top_stat_store[19:21,]
+Aug = top_stat_store[22:24,]
+Sep = top_stat_store[25:27,]
+Oct = top_stat_store[28:30,]
+Nov = top_stat_store[31:33,]
+Dec = top_stat_store[34:36,]
+
+if( month == 1){
+    Calc = Jan
+}else if( month == 2){
+    Calc = Feb
+}else if( month == 3){
+    Calc = Mar
+
+}else if( month == 4){
+    Calc = Apr
+
+}else if( month == 5){
+    Calc = May
+
+}else if( month == 6){
+  Calc = Jun
+  
+}else if( month == 7){
+  Calc = Jul
+  
+}else if( month == 8){
+  Calc = Aug
+  
+}else if( month == 9){
+  Calc = Sep
+  
+}else if( month == 10){
+  Calc = Oct
+  
+}else if( month == 11){
+  Calc = Nov
+  
+}else {
+  Calc = Dec
+}
+
+#Create color matrix for heat map
+
+c_df = data.frame()
+count = 1
+    filtered = filter(Complaints_total_grid_df, Borough == area, Month == month)
+
+for( i in Unique_Complaints){
+  
+  i = as.character(i)
+   filtered_month = filter(filtered, Complaint.Type == i)
+  group.Month <- group_by(filtered_month[,c("Month", "Complaint.Type","Day")],Day)
+  Sum_group_Month<- summarise(group.Month,count = n())
+  compare = mean(Sum_group_Month$count)
+  month_fiter2 = compare
+
+  #month_fiter2 = filter(Sum_group_Month,Complaint.Type == i)
+  #print("Count")
+  #print(month_fiter2$count)
+  #print("Global Mean")
+  #print(Calc[,i][2])
+  if(is.na(Calc[,i][1]) | is.na(Calc[,i][2]) | is.na(Calc[,i][3])){
+    c_df[count,1] = 1
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+  }else{
+  if(month_fiter2<Calc[,i][1]){
+    c_df[count,1] = 1
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+  }else if(month_fiter2<Calc[,i][2]){
+    c_df[count,1] = 2
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+
+  }else if(month_fiter2<Calc[,i][3]){
+    c_df[count,1] = 3
+    c_df[count,2] = i
+        c_df[count,3] = month_fiter2
+
+  }else{
+    c_df[count,1] = 4
+    c_df[count,2] = i
+    c_df[count,3] = month_fiter2
+
+  }}
+  count = count + 1
+}
+    
+#a = data.frame(t(Jan_color))
+#a$Complaints = rownames(a)
+colnames(c_df) = c("Health", "Complaints", "Counts")
+#rownames(a) = c(1:nrow(a))
+```
