@@ -1,3 +1,10 @@
+library(dplyr)
+library(data.table)
+library(plotrix)
+library(ggplot2)
+library(RColorBrewer)
+library(gridExtra)
+library(plyr)
 pus=readRDS("pus.RDS")
 zip11694 <- filter(pus, pus$"Incident Zip" == 11694 & pus$Created_Month== "02")
 
