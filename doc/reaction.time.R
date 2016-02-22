@@ -1,3 +1,10 @@
+library(dplyr)
+library(data.table)
+library(plotrix)
+library(ggplot2)
+library(RColorBrewer)
+library(gridExtra)
+library(plyr)
 setwd("C:/Users/mangmangyuzhou/Desktop/2016 Spring/data science")
 react=readRDS("react.RDS")
 ###filter to select zip code
