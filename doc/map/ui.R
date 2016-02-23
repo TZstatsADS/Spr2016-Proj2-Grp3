@@ -25,18 +25,57 @@ shinyUI(navbarPage("311 Requests", id="nav",theme = "bootstrap.css",
                                 
                             )
                    ),
-                   tabPanel("Anomal Detection"
+                   tabPanel("Anomal Detection",
+                            sidebarLayout(
+                              sidebarPanel(
+                                helpText("Create demographic maps with 
+                                         information from the 311 dataset."),
+                                
+                                selectInput("date", 
+                                            label = "Choose a month to display",
+                                            choices = c("Jan", "Feb"
+                                            ),
+                                            selected = "Jan"),
+                                sliderInput("ylim",
+                                            label = "Choose the range of the count",
+                                            min=0, max=6000, value=c(0,6000))
+                                
+                                
+                                
+                                
+                                ),
+                              
+                              mainPanel(plotOutput("anaom_plot"),
+                                        plotOutput("heat_plot")
+                                        )
+                            )
                      
                    ),
-                   tabPanel("Request Statistics",
-                            navlistPanel('Choices',
-                                       tabPanel('bar chart'
-                                                ),
-                                       tabPanel('density plot'
+                   
+                                  tabPanel('bar chart',
+                                                sidebarLayout(
+                                                  sidebarPanel(
+                                                    helpText("First graph:bar chart for complaint types. Second graph: bar chart for discriptors based on the most complaint type.
+                                                             "),
+                                                    #selectInput("date", 
+                                                    #            label = "Choose a month to display",
+                                                     #           choices = c("Jan", "Feb"
+                                                     #          4 ),
+                                                    #            selected = "Jan"),
+                                                    textInput("caption", "Caption:", "11694")
+                                                  ),
+                                                  mainPanel(#plotOutput("bar.chart_plot"),
+                                                            #plotOutput("bar.chart_plot1"),
+                                                            )
                                                 )
-                                       )
+                                                ),
+                                       
+                                                  
+                                                  
+                                            
+                                       
                             
-                   ),
+                  
                    tabPanel("Word Cloud",
                             # Application title
                             titlePanel("Word Cloud"),
